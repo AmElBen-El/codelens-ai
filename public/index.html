@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <meta
+    name="description"
+    content="CodeLens AI - intelligent code review and debugging assistant"
+  >
+
+  <title>CodeLens AI — Code Review Assistant</title>
+
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <header class="topbar">
+
+    <div class="brand">
+      <div class="brand-icon">{ }</div>
+
+      <div>
+        <h1>CodeLens AI</h1>
+        <span>Code Review Assistant</span>
+      </div>
+    </div>
+
+    <div class="status">
+      <span class="status-dot"></span>
+      Local Analyzer
+    </div>
+
+  </header>
+
+
+  <main class="container">
+
+    <section class="hero">
+
+      <p class="eyebrow">DEVELOPER TOOL</p>
+
+      <h2>
+        Find problems in your code
+        <span>before they become bugs.</span>
+      </h2>
+
+      <p class="hero-text">
+        Analyze JavaScript and TypeScript code for potential
+        bugs, security concerns and code-quality issues.
+      </p>
+
+    </section>
+
+
+    <section class="workspace">
+
+      <!-- CODE INPUT -->
+
+      <div class="panel">
+
+        <div class="panel-header">
+
+          <div>
+            <h3>Source Code</h3>
+            <p>Paste your code below</p>
+          </div>
+
+          <select id="language">
+  <option value="javascript">JavaScript</option>
+  <option value="typescript">TypeScript</option>
+  <option value="python">Python</option>
+  <option value="html">HTML</option>
+  <option value="css">CSS</option>
+  <option value="java">Java</option>
+  <option value="cpp">C++</option>
+  <option value="c">C</option>
+  <option value="php">PHP</option>
+  <option value="go">Go</option>
+</select>
+
+        </div>
+
+
+        <div class="editor-wrapper">
+
+          <div id="lineNumbers" class="line-numbers">1</div>
+
+          <textarea
+            id="code"
+            spellcheck="false"
+            placeholder="// Paste your JavaScript or TypeScript code here..."
+          ></textarea>
+
+        </div>
+
+
+        <div class="editor-footer">
+
+          <span id="characterCount">
+            0 characters
+          </span>
+
+          <span>
+            JavaScript / TypeScript
+          </span>
+
+        </div>
+
+
+        <div class="actions">
+
+          <button
+            id="clearBtn"
+            class="secondary-btn"
+            type="button"
+          >
+            Clear
+          </button>
+
+          <button
+            id="reviewBtn"
+            class="primary-btn"
+            type="button"
+          >
+            <span>⌕</span>
+            Review Code
+          </button>
+
+        </div>
+
+      </div>
+
+
+      <!-- RESULTS -->
+      
+      <div class="panel results-panel">
+
+  <div class="panel-header">
+
+    <div>
+      <div class="panel-title">
+        Code Review
+      </div>
+
+      <div class="panel-subtitle">
+        Local analysis + Gemini AI
+      </div>
+    </div>
+
+    <button
+      id="copyBtn"
+      type="button"
+      class="secondary-btn"
+    >
+      Copy
+    </button>
+
+  </div>
+
+  <div
+    id="result"
+    class="results"
+  >
+    <div class="empty-state">
+
+      <div class="empty-icon">
+        ✓
+      </div>
+
+      <h3>
+        Ready to review
+      </h3>
+
+      <p>
+        Paste your code and click
+        <strong>Review Code</strong>
+        to begin.
+      </p>
+
+    </div>
+  </div>
+
+</div>
+      
+
+  
+
+    
+
+    </section>
+
+
+    <section class="features">
+
+      <div class="feature">
+
+        <div class="feature-icon">
+          ⚡
+        </div>
+
+        <div>
+          <h3>Fast Analysis</h3>
+          <p>
+            Quickly identify common coding problems.
+          </p>
+        </div>
+
+      </div>
+
+
+      <div class="feature">
+
+        <div class="feature-icon">
+          🛡
+        </div>
+
+        <div>
+          <h3>Security Checks</h3>
+          <p>
+            Detect potentially unsafe coding patterns.
+          </p>
+        </div>
+
+      </div>
+
+
+      <div class="feature">
+
+        <div class="feature-icon">
+          ✓
+        </div>
+
+        <div>
+          <h3>Actionable Feedback</h3>
+          <p>
+            Understand what to improve and why.
+          </p>
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <footer>
+
+      <p>
+        CodeLens AI · Developer Portfolio Project
+      </p>
+
+      <p>
+        Built with HTML, CSS, JavaScript and Node.js
+      </p>
+
+    </footer>
+
+  </main>
+
+
+  <script src="app.js"></script>
+
+</body>
+</html>
