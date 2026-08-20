@@ -208,11 +208,12 @@ function analyzeLocally(code, language) {
 // =========================
 
 
-async function reviewWithGemini(code, language) {
+  async function reviewWithGemini(code, language) {
 
   if (!ai) {
     return {
       available: false,
+      model: null,
       message: "Gemini API is not configured."
     };
   }
@@ -235,6 +236,7 @@ Return a clear technical review containing:
 8. CORRECTED CODE
 
 For every genuine problem:
+
 - Explain what is wrong.
 - Explain why it matters.
 - Give the line number when possible.
@@ -254,7 +256,8 @@ ${code}
 -------------- END CODE --------------
 `;
 
-  // Try the models in this order.
+  // Current Gemini models available to CodeLens.
+  // Do not add retired/unsupported Gemini 2.5 models.
   const models = [
     "gemini-3.6-flash",
     "gemini-3.5-flash",
@@ -278,12 +281,14 @@ ${code}
         });
 
       const text =
-        response.text || "";
+        response?.text || "";
 
       if (!text.trim()) {
+
         throw new Error(
           `${model} returned an empty response.`
         );
+
       }
 
       console.log(
@@ -301,19 +306,74 @@ ${code}
       lastError = error;
 
       const status =
-        error?.status ||
-        error?.code ||
-        error?.error?.code ||
-        "unknown";
+        Number(
+          error?.status ||
+          error?.code ||
+          error?.error?.code ||
+          0
+        );
+
+      const message =
+        error?.message ||
+        error?.error?.message ||
+        String(error);
 
       console.error(
         `Gemini model ${model} failed (${status}):`,
-        error?.message || error
+        message
       );
 
-      // Try the next model.
-      continue;
+      /*
+       * 403 normally means the API key/project does not
+       * have permission to make the request.
+       *
+       * Trying several models will not normally fix
+       * an authentication/permission problem.
+       */
+      if (status === 403) {
+
+        return {
+          available: false,
+          model,
+          errorCode: 403,
+          message:
+            "Gemini API permission denied. Check the API key, project, and API access."
+        };
+
+      }
+
+      /*
+       * These errors are normally temporary or model-specific.
+       * Continue to the next model.
+       */
+      if (
+        status === 429 ||
+        status === 503 ||
+        status === 404 ||
+        status === 500 ||
+        status === 502 ||
+        status === 504 ||
+        status === 0
+      ) {
+
+        console.log(
+          `Trying next Gemini model after ${model} failure...`
+        );
+
+        continue;
+      }
+
+      /*
+       * Unknown errors are also passed to the next model.
+       * This gives CodeLens additional resilience against
+       * provider/network changes.
+       */
+      console.log(
+        `Unexpected Gemini error on ${model}. Trying next model...`
+      );
+
     }
+
   }
 
   console.error(
@@ -322,11 +382,22 @@ ${code}
 
   return {
     available: false,
+    model: null,
+    errorCode:
+      lastError?.status ||
+      lastError?.code ||
+      lastError?.error?.code ||
+      null,
     message:
       `Gemini review failed after trying ${models.length} models. ` +
-      `${lastError?.message || "Unknown Gemini error."}`
+      (
+        lastError?.message ||
+        lastError?.error?.message ||
+        "All configured Gemini models were unavailable."
+      )
   };
-};
+  };
+
 
 // =========================
 // REVIEW ENDPOINT
