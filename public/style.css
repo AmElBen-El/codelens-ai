@@ -608,3 +608,143 @@ footer {
   white-space: pre;
 }
 }
+/* =========================================
+   PORTFOLIO POLISH
+   ========================================= */
+
+button,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.primary-btn,
+.secondary-btn,
+.copy-ai-code {
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    opacity 0.15s ease,
+    transform 0.15s ease;
+}
+
+.primary-btn:not(:disabled):active,
+.secondary-btn:active,
+.copy-ai-code:active {
+  transform: translateY(1px);
+}
+
+.secondary-btn:hover {
+  border-color: var(--accent);
+}
+
+.results {
+  overflow-wrap: anywhere;
+}
+
+.ai-review {
+  overflow-wrap: anywhere;
+}
+
+.code-block pre {
+  max-width: 100%;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 800px) {
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .panel-header {
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .panel-header select {
+    width: 100%;
+  }
+
+  .results-panel {
+    min-height: 0;
+  }
+
+  .results {
+    min-height: 320px;
+    padding: 15px;
+  }
+
+  .empty-state {
+    min-height: 300px;
+    height: auto;
+    padding: 40px 15px;
+  }
+}
+
+@media (max-width: 500px) {
+  .topbar {
+    height: 62px;
+  }
+
+  .brand-icon {
+    width: 36px;
+    height: 36px;
+  }
+
+  .brand h1 {
+    font-size: 15px;
+  }
+
+  .hero {
+    padding: 38px 0 28px;
+  }
+
+  .hero h2 {
+    font-size: clamp(30px, 9vw, 38px);
+  }
+
+  .hero-text {
+    font-size: 14px;
+  }
+
+  .editor-wrapper,
+  textarea {
+    min-height: 260px;
+  }
+
+  .line-numbers {
+    width: 38px;
+    padding-left: 6px;
+    padding-right: 7px;
+    font-size: 12px;
+  }
+
+  textarea {
+    padding: 14px 12px;
+    font-size: 12px;
+  }
+
+  .editor-footer {
+    font-size: 10px;
+  }
+
+  .actions {
+    padding: 12px;
+  }
+
+  .results-panel .panel-header {
+    align-items: flex-start;
+  }
+
+  .code-block pre {
+    padding: 12px;
+    font-size: 12px;
+  }
+}

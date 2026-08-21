@@ -4,7 +4,8 @@ const copyBtn = document.getElementById("copyBtn");
 
 const codeInput = document.getElementById("code");
 const language = document.getElementById("language");
-
+const languageLabel =
+  document.getElementById("languageLabel");
 const result = document.getElementById("result");
 const lineNumbers = document.getElementById("lineNumbers");
 const characterCount = document.getElementById("characterCount");
@@ -30,6 +31,43 @@ function updateCharacterCount() {
 
   characterCount.textContent =
     `${codeInput.value.length.toLocaleString()} characters`;
+}
+
+function updateLanguageUI() {
+  if (!language) return;
+
+  const labels = {
+    javascript: "JavaScript",
+    typescript: "TypeScript",
+    python: "Python",
+    html: "HTML",
+    css: "CSS",
+    java: "Java",
+    cpp: "C++",
+    c: "C",
+    php: "PHP",
+    go: "Go"
+  };
+
+  const selected =
+    language.value || "javascript";
+
+  if (languageLabel) {
+    languageLabel.textContent =
+      labels[selected] || selected;
+  }
+
+  if (codeInput) {
+    codeInput.placeholder =
+      `// Paste your ${labels[selected] || selected} code here...`;
+  }
+}
+
+if (language) {
+  language.addEventListener(
+    "change",
+    updateLanguageUI
+  );
 }
 
 
@@ -691,3 +729,4 @@ if (copyBtn) {
 
 updateLineNumbers();
 updateCharacterCount();
+updateLanguageUI();
