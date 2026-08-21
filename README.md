@@ -31,6 +31,7 @@ JavaScript · TypeScript · Python · HTML · CSS · Java · C · C++ · PHP · 
 🏗️ Architecture
 
 flowchart TD
+   
     A[Developer] --> B[CodeLens Web UI]
     B --> C[Express REST API]
 
