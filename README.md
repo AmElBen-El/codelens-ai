@@ -30,24 +30,23 @@ JavaScript · TypeScript · Python · HTML · CSS · Java · C · C++ · PHP · 
 
 🏗️ Architecture
 
-User
- │
- ▼
-CodeLens Web UI
- │
- ▼
-Express REST API
- │
- ├──► Local Analyzer
- │      └── Deterministic checks
- │
- └──► Gemini AI
-        └── Semantic code review
- │
- ▼
-Combined Review
+flowchart TD
+    A[Developer] --> B[CodeLens Web UI]
+    B --> C[Express REST API]
 
-The local analyzer handles predictable, high-confidence checks while Gemini provides deeper contextual analysis.
+    C --> D[Local Analyzer]
+    C --> E[Gemini AI]
+
+    D --> F[Combined Review]
+    E --> F
+
+    F --> G[Review Results]
+
+CodeLens uses a two-layer review architecture:
+
+- Local Analyzer — fast, deterministic checks for common coding and security patterns.
+- Gemini AI — contextual code review, explanations, recommendations, and corrected code.
+- Combined Review — presents both analysis layers in a single developer-focused interface.
 
 ---
 
