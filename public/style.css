@@ -472,6 +472,14 @@ footer {
   color: var(--text);
 }
 
+.ai-subheading {
+  margin: 16px 0 8px;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--text);
+}
+
 .ai-bullet {
   margin: 7px 0;
   padding-left: 8px;

@@ -117,16 +117,21 @@ function formatAIReview(text) {
     '<h3 class="ai-main-heading">$1</h3>'
   );
 
-  // Secondary headings
-  value = value.replace(
-    /^##\s+(.+)$/gm,
-    '<h4 class="ai-heading">$1</h4>'
-  );
+  // Markdown headings
+value = value.replace(
+  /^####\s+(.+)$/gm,
+  '<h5 class="ai-subheading">$1</h5>'
+);
 
-  value = value.replace(
-    /^###\s+(.+)$/gm,
-    '<h4 class="ai-heading">$1</h4>'
-  );
+value = value.replace(
+  /^###\s+(.+)$/gm,
+  '<h4 class="ai-heading">$1</h4>'
+);
+
+value = value.replace(
+  /^##\s+(.+)$/gm,
+  '<h4 class="ai-heading">$1</h4>'
+);
 
   // Numbered section headings
   value = value.replace(
