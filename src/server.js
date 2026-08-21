@@ -44,10 +44,24 @@ app.get("/api/health", (req, res) => {
 // LOCAL ANALYZER
 // =========================
 
-function analyzeLocally(code, language) {
-
+      function analyzeLocally(code, language) {
   const issues = [];
   const lines = code.split("\n");
+  const selectedLanguage = String(language || "javascript").toLowerCase();
+
+  function addIssue(severity, line, title, message, suggestion) {
+    issues.push({
+      severity,
+      ...(line ? { line } : {}),
+      title,
+      message,
+      suggestion
+    });
+  }
+
+  // --------------------------------------------------
+  // Bracket balance
+  // --------------------------------------------------
 
   const pairs = [
     ["(", ")"],
@@ -56,7 +70,6 @@ function analyzeLocally(code, language) {
   ];
 
   for (const [open, close] of pairs) {
-
     const opens =
       (code.match(
         new RegExp(`\\${open}`, "g")
@@ -68,107 +81,370 @@ function analyzeLocally(code, language) {
       ) || []).length;
 
     if (opens !== closes) {
-
-      issues.push({
-        severity: "error",
-        title: "Unbalanced brackets",
-        message:
-          `Possible syntax error: ${open} and ${close} are not balanced.`,
-        suggestion:
-          `Check that every ${open} has a matching ${close}.`
-      });
-
+      addIssue(
+        "error",
+        null,
+        "Unbalanced brackets",
+        `Possible syntax error: ${open} and ${close} are not balanced.`,
+        `Check that every ${open} has a matching ${close}.`
+      );
     }
-
   }
 
+  // --------------------------------------------------
+  // JavaScript / TypeScript
+  // --------------------------------------------------
 
-  lines.forEach((line, index) => {
+  if (
+    selectedLanguage === "javascript" ||
+    selectedLanguage === "typescript"
+  ) {
+    lines.forEach((line, index) => {
+      const lineNumber = index + 1;
+      const trimmed = line.trim();
 
-    const lineNumber = index + 1;
-    const trimmed = line.trim();
-
-
-    if (line.includes("console.log")) {
-
-      issues.push({
-        severity: "warning",
-        line: lineNumber,
-        title: "Debugging statement",
-        message:
+      if (/\bconsole\.log\s*\(/.test(line)) {
+        addIssue(
+          "warning",
+          lineNumber,
+          "Debugging statement",
           "console.log() is present in the code.",
-        suggestion:
           "Remove or replace debugging output before production deployment."
-      });
+        );
+      }
 
-    }
-
-
-    if (/\bvar\s+/.test(line)) {
-
-      issues.push({
-        severity: "warning",
-        line: lineNumber,
-        title: "Legacy variable declaration",
-        message:
+      if (/\bvar\s+/.test(line)) {
+        addIssue(
+          "warning",
+          lineNumber,
+          "Legacy variable declaration",
           "The var keyword is being used.",
-        suggestion:
           "Consider using const or let."
-      });
+        );
+      }
 
-    }
-
-
-    if (/[^=]==[^=]/.test(line)) {
-
-      issues.push({
-        severity: "warning",
-        line: lineNumber,
-        title: "Loose equality",
-        message:
+      if (/[^=]==[^=]/.test(line)) {
+        addIssue(
+          "warning",
+          lineNumber,
+          "Loose equality",
           "The == operator is being used.",
-        suggestion:
           "Consider using === for strict equality."
-      });
+        );
+      }
 
-    }
-
-
-    if (/\beval\s*\(/.test(line)) {
-
-      issues.push({
-        severity: "error",
-        line: lineNumber,
-        title: "Potential security risk",
-        message:
+      if (/\beval\s*\(/.test(line)) {
+        addIssue(
+          "error",
+          lineNumber,
+          "Potential security risk",
           "eval() can execute dynamically generated JavaScript.",
-        suggestion:
           "Avoid eval() whenever possible."
-      });
+        );
+      }
 
-    }
-
-
-    if (
-      /^(const|let|var)\s+/.test(trimmed) &&
-      !trimmed.endsWith(";") &&
-      !trimmed.endsWith("{")
-    ) {
-
-      issues.push({
-        severity: "warning",
-        line: lineNumber,
-        title: "Possible missing semicolon",
-        message:
+      if (
+        /^(const|let|var)\s+/.test(trimmed) &&
+        !trimmed.endsWith(";") &&
+        !trimmed.endsWith("{")
+      ) {
+        addIssue(
+          "warning",
+          lineNumber,
+          "Possible missing semicolon",
           "This variable declaration does not end with a semicolon.",
-        suggestion:
           "Add a semicolon if that matches the project's coding style."
-      });
+        );
+      }
 
+      if (
+        selectedLanguage === "typescript" &&
+        /\bany\b/.test(line)
+      ) {
+        addIssue(
+          "warning",
+          lineNumber,
+          "Explicit any type",
+          "The any type reduces TypeScript's static type safety.",
+          "Use a more specific type where practical."
+        );
+      }
+    });
+  }
+
+  // --------------------------------------------------
+  // Python
+  // --------------------------------------------------
+
+  if (selectedLanguage === "python") {
+    lines.forEach((line, index) => {
+      const lineNumber = index + 1;
+      const trimmed = line.trim();
+
+      if (/\bprint\s*\(/.test(line)) {
+        addIssue(
+          "warning",
+          lineNumber,
+          "Debugging/output statement",
+          "print() is present in the code.",
+          "Remove debugging output or replace it with appropriate application logging."
+        );
+      }
+
+      if (/\beval\s*\(/.test(line)) {
+        addIssue(
+          "error",
+          lineNumber,
+          "Potential security risk",
+          "eval() can execute dynamically supplied Python code.",
+          "Avoid eval() when processing untrusted input."
+        );
+      }
+
+      if (/\bexec\s*\(/.test(line)) {
+        addIssue(
+          "error",
+          lineNumber,
+          "Potential security risk",
+          "exec() can execute dynamically generated Python code.",
+          "Avoid exec() with untrusted or dynamic input."
+        );
+      }
+
+      if (
+        trimmed &&
+        !trimmed.startsWith("#") &&
+        /:\s*$/.test(trimmed) === false &&
+        /^\s*(if|for|while|def|class|try|except|finally|with)\b/.test(trimmed)
+      ) {
+        // Intentionally do not flag indentation here.
+        // Python indentation requires parser-level analysis.
+      }
+    });
+  }
+
+  // --------------------------------------------------
+  // HTML
+  // --------------------------------------------------
+
+  if (selectedLanguage === "html") {
+    if (/<script\b[^>]*src=["'][^"']+["'][^>]*>/i.test(code)) {
+      addIssue(
+        "warning",
+        null,
+        "External script detected",
+        "The HTML document loads an external JavaScript file.",
+        "Verify that external scripts come from trusted sources and use appropriate security controls."
+      );
     }
 
-  });
+    if (/<img\b(?![^>]*\balt\s*=)/i.test(code)) {
+      addIssue(
+        "warning",
+        null,
+        "Missing image alt text",
+        "An image element appears to be missing an alt attribute.",
+        "Add meaningful alt text for accessibility, or use an empty alt attribute for decorative images."
+      );
+    }
 
+    if (/style\s*=/i.test(code)) {
+      addIssue(
+        "warning",
+        null,
+        "Inline CSS",
+        "Inline style attributes are being used.",
+        "Consider moving reusable styling into a CSS stylesheet."
+      );
+    }
+
+    if (/onclick\s*=/i.test(code)) {
+      addIssue(
+        "warning",
+        null,
+        "Inline event handler",
+        "An inline onclick handler is being used.",
+        "Consider attaching event listeners from JavaScript instead."
+      );
+    }
+  }
+
+  // --------------------------------------------------
+  // CSS
+  // --------------------------------------------------
+
+  if (selectedLanguage === "css") {
+    lines.forEach((line, index) => {
+      const lineNumber = index + 1;
+
+      if (/!important\b/.test(line)) {
+        addIssue(
+          "warning",
+          lineNumber,
+          "Use of !important",
+          "!important can make CSS harder to override and maintain.",
+          "Use stronger selectors or improve the cascade where practical."
+        );
+      }
+
+      if (/\beval\s*\(/.test(line)) {
+        addIssue(
+          "error",
+          lineNumber,
+          "Unexpected eval() usage",
+          "eval-like executable content was detected.",
+          "Remove executable dynamic code from CSS."
+        );
+      }
+    });
+  }
+
+  // --------------------------------------------------
+  // Java
+  // --------------------------------------------------
+
+  if (selectedLanguage === "java") {
+    lines.forEach((line, index) => {
+      const lineNumber = index + 1;
+
+      if (/System\.out\.println\s*\(/.test(line)) {
+        addIssue(
+          "warning",
+          lineNumber,
+          "Debugging/output statement",
+          "System.out.println() is present.",
+          "Use an appropriate logging framework for production applications."
+        );
+      }
+
+      if (/\b==\s*["']/.test(line)) {
+        addIssue(
+          "warning",
+          lineNumber,
+          "Possible string comparison issue",
+          "The == operator may be comparing object references instead of string values.",
+          "Use .equals() when comparing Java String values."
+        );
+      }
+    });
+  }
+
+  // --------------------------------------------------
+  // C / C++
+  // --------------------------------------------------
+
+  if (
+    selectedLanguage === "c" ||
+    selectedLanguage === "cpp"
+  ) {
+    lines.forEach((line, index) => {
+      const lineNumber = index + 1;
+
+      if (/\bgets\s*\(/.test(line)) {
+        addIssue(
+          "error",
+          lineNumber,
+          "Unsafe input function",
+          "gets() can cause buffer overflow vulnerabilities.",
+          "Use a bounded input function such as fgets()."
+        );
+      }
+
+      if (/\bprintf\s*\(/.test(line)) {
+        addIssue(
+          "warning",
+          lineNumber,
+          "Console output",
+          "printf() is present in the code.",
+          "Use appropriate logging or remove debugging output before production."
+        );
+      }
+
+      if (/\bstrcpy\s*\(/.test(line)) {
+        addIssue(
+          "warning",
+          lineNumber,
+          "Potential buffer overflow",
+          "strcpy() does not perform bounds checking.",
+          "Prefer a bounds-aware string handling approach."
+        );
+      }
+    });
+  }
+
+  // --------------------------------------------------
+  // PHP
+  // --------------------------------------------------
+
+  if (selectedLanguage === "php") {
+    lines.forEach((line, index) => {
+      const lineNumber = index + 1;
+
+      if (/\beval\s*\(/.test(line)) {
+        addIssue(
+          "error",
+          lineNumber,
+          "Potential security risk",
+          "PHP eval() executes dynamically generated PHP code.",
+          "Avoid eval(), especially with user-controlled input."
+        );
+      }
+
+      if (/\bvar_dump\s*\(/.test(line)) {
+        addIssue(
+          "warning",
+          lineNumber,
+          "Debugging statement",
+          "var_dump() is present in the code.",
+          "Remove debugging output before production deployment."
+        );
+      }
+
+      if (/\bmysql_query\s*\(/.test(line)) {
+        addIssue(
+          "error",
+          lineNumber,
+          "Deprecated database API",
+          "The mysql_query() API is obsolete in modern PHP.",
+          "Use PDO or MySQLi with parameterized queries."
+        );
+      }
+    });
+  }
+
+  // --------------------------------------------------
+  // Go
+  // --------------------------------------------------
+
+  if (selectedLanguage === "go") {
+    lines.forEach((line, index) => {
+      const lineNumber = index + 1;
+
+      if (/\bfmt\.Print/.test(line)) {
+        addIssue(
+          "warning",
+          lineNumber,
+          "Console output",
+          "fmt.Print* is present in the code.",
+          "Use structured logging where appropriate for production applications."
+        );
+      }
+
+      if (/\bpanic\s*\(/.test(line)) {
+        addIssue(
+          "warning",
+          lineNumber,
+          "Panic usage",
+          "panic() can terminate the application unexpectedly.",
+          "Handle recoverable errors explicitly where appropriate."
+        );
+      }
+    });
+  }
+
+  // --------------------------------------------------
+  // Calculate statistics
+  // --------------------------------------------------
 
   const errors =
     issues.filter(
@@ -180,26 +456,17 @@ function analyzeLocally(code, language) {
       issue => issue.severity === "warning"
     ).length;
 
-
   return {
-
-    language,
-
+    language: selectedLanguage,
     issueCount: issues.length,
-
     errorCount: errors,
-
     warningCount: warnings,
-
     issues,
-
     summary:
       issues.length === 0
         ? "No obvious issues detected by the local analyzer."
         : `${issues.length} potential issue(s) detected.`
-
   };
-
 }
 
 
