@@ -19,3 +19,12 @@ src/*.backup.js
 src/*.before-fix.js
 src/*.v1.*.js
 src/*.working.js
+# Local backup files
+*.backup.js
+*.before-*.js
+*.working.js
+*.v1.1-backup.js
+*.v1.2-working.js
+*.backup.html
+*.before-*.html
+*.v1.1-backup.html
