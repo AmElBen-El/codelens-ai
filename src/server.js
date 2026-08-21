@@ -44,7 +44,7 @@ app.get("/api/health", (req, res) => {
 // LOCAL ANALYZER
 // =========================
 
-      function analyzeLocally(code, language) {
+function analyzeLocally(code, language) {
   const issues = [];
   const lines = code.split("\n");
   const selectedLanguage = String(language || "javascript").toLowerCase();
@@ -59,55 +59,61 @@ app.get("/api/health", (req, res) => {
     });
   }
 
-  // --------------------------------------------------
-  // Bracket balance
-  // --------------------------------------------------
-
-  const pairs = [
-    ["(", ")"],
-    ["{", "}"],
-    ["[", "]"]
-  ];
-
-  for (const [open, close] of pairs) {
-    const opens =
-      (code.match(
-        new RegExp(`\\${open}`, "g")
-      ) || []).length;
-
-    const closes =
-      (code.match(
-        new RegExp(`\\${close}`, "g")
-      ) || []).length;
-
-    if (opens !== closes) {
-      addIssue(
-        "error",
-        null,
-        "Unbalanced brackets",
-        `Possible syntax error: ${open} and ${close} are not balanced.`,
-        `Check that every ${open} has a matching ${close}.`
-      );
-    }
-  }
-
-  // --------------------------------------------------
-  // JavaScript / TypeScript
-  // --------------------------------------------------
+  // =========================================
+  // JAVASCRIPT / TYPESCRIPT
+  // =========================================
 
   if (
     selectedLanguage === "javascript" ||
     selectedLanguage === "typescript"
   ) {
+    const pairs = [
+      ["(", ")"],
+      ["{", "}"],
+      ["[", "]"]
+    ];
+
+    for (const [open, close] of pairs) {
+      const opens =
+        (code.match(
+          new RegExp(`\\${open}`, "g")
+        ) || []).length;
+
+      const closes =
+        (code.match(
+          new RegExp(`\\${close}`, "g")
+        ) || []).length;
+
+      if (opens !== closes) {
+        addIssue(
+          "error",
+          null,
+          "Unbalanced brackets",
+          `Possible syntax error: ${open} and ${close} are not balanced.`,
+          `Check that every ${open} has a matching ${close}.`
+        );
+      }
+    }
+
     lines.forEach((line, index) => {
       const lineNumber = index + 1;
       const trimmed = line.trim();
 
-      if (/\bconsole\.log\s*\(/.test(line)) {
+      if (/\beval\s*\(/.test(line)) {
+        addIssue(
+          "error",
+          lineNumber,
+          "Potential security risk",
+          "eval() can execute dynamically generated JavaScript.",
+          "Avoid eval() whenever possible."
+        );
+      }
+
+      if (line.includes("console.log")) {
         addIssue(
           "warning",
           lineNumber,
-          "Debugging statement",
+          "Debugging/output statement",
           "console.log() is present in the code.",
           "Remove or replace debugging output before production deployment."
         );
@@ -133,16 +139,6 @@ app.get("/api/health", (req, res) => {
         );
       }
 
-      if (/\beval\s*\(/.test(line)) {
-        addIssue(
-          "error",
-          lineNumber,
-          "Potential security risk",
-          "eval() can execute dynamically generated JavaScript.",
-          "Avoid eval() whenever possible."
-        );
-      }
-
       if (
         /^(const|let|var)\s+/.test(trimmed) &&
         !trimmed.endsWith(";") &&
@@ -156,48 +152,25 @@ app.get("/api/health", (req, res) => {
           "Add a semicolon if that matches the project's coding style."
         );
       }
-
-      if (
-        selectedLanguage === "typescript" &&
-        /\bany\b/.test(line)
-      ) {
-        addIssue(
-          "warning",
-          lineNumber,
-          "Explicit any type",
-          "The any type reduces TypeScript's static type safety.",
-          "Use a more specific type where practical."
-        );
-      }
     });
   }
 
-  // --------------------------------------------------
-  // Python
-  // --------------------------------------------------
+  // =========================================
+  // PYTHON
+  // =========================================
 
-  if (selectedLanguage === "python") {
+  else if (selectedLanguage === "python") {
     lines.forEach((line, index) => {
       const lineNumber = index + 1;
       const trimmed = line.trim();
-
-      if (/\bprint\s*\(/.test(line)) {
-        addIssue(
-          "warning",
-          lineNumber,
-          "Debugging/output statement",
-          "print() is present in the code.",
-          "Remove debugging output or replace it with appropriate application logging."
-        );
-      }
 
       if (/\beval\s*\(/.test(line)) {
         addIssue(
           "error",
           lineNumber,
           "Potential security risk",
-          "eval() can execute dynamically supplied Python code.",
-          "Avoid eval() when processing untrusted input."
+          "eval() can execute dynamically generated Python code.",
+          "Avoid eval() and use safe parsing or explicit validation."
         );
       }
 
@@ -207,73 +180,132 @@ app.get("/api/health", (req, res) => {
           lineNumber,
           "Potential security risk",
           "exec() can execute dynamically generated Python code.",
-          "Avoid exec() with untrusted or dynamic input."
+          "Avoid exec() with untrusted input."
+        );
+      }
+
+      if (/\bprint\s*\(/.test(line)) {
+        addIssue(
+          "warning",
+          lineNumber,
+          "Debugging/output statement",
+          "print() is present in the code.",
+          "Use appropriate application logging where necessary."
+        );
+      }
+
+      if (/^\s*except\s*:/.test(line)) {
+        addIssue(
+          "warning",
+          lineNumber,
+          "Broad exception handling",
+          "A bare except clause catches every exception.",
+          "Catch the specific exceptions your code expects."
         );
       }
 
       if (
-        trimmed &&
-        !trimmed.startsWith("#") &&
-        /:\s*$/.test(trimmed) === false &&
-        /^\s*(if|for|while|def|class|try|except|finally|with)\b/.test(trimmed)
+        trimmed.startsWith("def ") &&
+        !trimmed.includes(":")
       ) {
-        // Intentionally do not flag indentation here.
-        // Python indentation requires parser-level analysis.
+        addIssue(
+          "error",
+          lineNumber,
+          "Possible invalid function declaration",
+          "Python function declarations require a trailing colon.",
+          "Add ':' after the function signature."
+        );
       }
     });
   }
 
-  // --------------------------------------------------
+  // =========================================
   // HTML
-  // --------------------------------------------------
+  // =========================================
 
-  if (selectedLanguage === "html") {
-    if (/<script\b[^>]*src=["'][^"']+["'][^>]*>/i.test(code)) {
-      addIssue(
-        "warning",
-        null,
-        "External script detected",
-        "The HTML document loads an external JavaScript file.",
-        "Verify that external scripts come from trusted sources and use appropriate security controls."
-      );
+  else if (selectedLanguage === "html") {
+    const openingTags = [
+      "html",
+      "head",
+      "body",
+      "div",
+      "section",
+      "main",
+      "header",
+      "footer",
+      "form",
+      "script",
+      "style"
+    ];
+
+    for (const tag of openingTags) {
+      const opens =
+        (code.match(
+          new RegExp(`<${tag}\\b`, "gi")
+        ) || []).length;
+
+      const closes =
+        (code.match(
+          new RegExp(`</${tag}>`, "gi")
+        ) || []).length;
+
+      if (opens !== closes) {
+        addIssue(
+          "error",
+          null,
+          "Possibly unclosed HTML tag",
+          `<${tag}> opening and closing tags do not appear balanced.`,
+          `Check that every <${tag}> has a matching </${tag}>.`
+        );
+      }
     }
 
-    if (/<img\b(?![^>]*\balt\s*=)/i.test(code)) {
-      addIssue(
-        "warning",
-        null,
-        "Missing image alt text",
-        "An image element appears to be missing an alt attribute.",
-        "Add meaningful alt text for accessibility, or use an empty alt attribute for decorative images."
-      );
-    }
+    lines.forEach((line, index) => {
+      const lineNumber = index + 1;
 
-    if (/style\s*=/i.test(code)) {
-      addIssue(
-        "warning",
-        null,
-        "Inline CSS",
-        "Inline style attributes are being used.",
-        "Consider moving reusable styling into a CSS stylesheet."
-      );
-    }
+      if (/<img\b/i.test(line) && !/\balt\s*=/.test(line)) {
+        addIssue(
+          "warning",
+          lineNumber,
+          "Missing image alt attribute",
+          "An <img> element does not contain an alt attribute.",
+          "Add descriptive alt text for accessibility."
+        );
+      }
 
-    if (/onclick\s*=/i.test(code)) {
-      addIssue(
-        "warning",
-        null,
-        "Inline event handler",
-        "An inline onclick handler is being used.",
-        "Consider attaching event listeners from JavaScript instead."
-      );
-    }
+      if (/\bon(click|load|mouseover)\s*=/i.test(line)) {
+        addIssue(
+          "warning",
+          lineNumber,
+          "Inline event handler",
+          "An inline HTML event handler is being used.",
+          "Consider using JavaScript event listeners instead."
+        );
+      }
+    });
   }
 
-  // --------------------------------------------------
+  // =========================================
   // CSS
-  // --------------------------------------------------
+  // =========================================
 
-  if (selectedLanguage === "css") {
+  else if (selectedLanguage === "css") {
+    const opens =
+      (code.match(/\{/g) || []).length;
+
+    const closes =
+      (code.match(/\}/g) || []).length;
+
+    if (opens !== closes) {
+      addIssue(
+        "error",
+        null,
+        "Unbalanced CSS braces",
+        "CSS block braces are not balanced.",
+        "Check that every opening { has a matching closing }."
+      );
+    }
+
     lines.forEach((line, index) => {
       const lineNumber = index + 1;
 
@@ -282,101 +314,40 @@ app.get("/api/health", (req, res) => {
           "warning",
           lineNumber,
           "Use of !important",
-          "!important can make CSS harder to override and maintain.",
-          "Use stronger selectors or improve the cascade where practical."
-        );
-      }
-
-      if (/\beval\s*\(/.test(line)) {
-        addIssue(
-          "error",
-          lineNumber,
-          "Unexpected eval() usage",
-          "eval-like executable content was detected.",
-          "Remove executable dynamic code from CSS."
+          "!important can make CSS harder to maintain and override.",
+          "Use stronger selectors or improve the cascade where possible."
         );
       }
     });
   }
 
-  // --------------------------------------------------
-  // Java
-  // --------------------------------------------------
+  // =========================================
+  // JAVA / C / C++ / PHP / GO
+  // =========================================
 
-  if (selectedLanguage === "java") {
-    lines.forEach((line, index) => {
-      const lineNumber = index + 1;
-
-      if (/System\.out\.println\s*\(/.test(line)) {
-        addIssue(
-          "warning",
-          lineNumber,
-          "Debugging/output statement",
-          "System.out.println() is present.",
-          "Use an appropriate logging framework for production applications."
-        );
-      }
-
-      if (/\b==\s*["']/.test(line)) {
-        addIssue(
-          "warning",
-          lineNumber,
-          "Possible string comparison issue",
-          "The == operator may be comparing object references instead of string values.",
-          "Use .equals() when comparing Java String values."
-        );
-      }
-    });
-  }
-
-  // --------------------------------------------------
-  // C / C++
-  // --------------------------------------------------
-
-  if (
+  else if (
+    selectedLanguage === "java" ||
     selectedLanguage === "c" ||
-    selectedLanguage === "cpp"
+    selectedLanguage === "cpp" ||
+    selectedLanguage === "php" ||
+    selectedLanguage === "go"
   ) {
-    lines.forEach((line, index) => {
-      const lineNumber = index + 1;
+    const opens =
+      (code.match(/\{/g) || []).length;
 
-      if (/\bgets\s*\(/.test(line)) {
-        addIssue(
-          "error",
-          lineNumber,
-          "Unsafe input function",
-          "gets() can cause buffer overflow vulnerabilities.",
-          "Use a bounded input function such as fgets()."
-        );
-      }
+    const closes =
+      (code.match(/\}/g) || []).length;
 
-      if (/\bprintf\s*\(/.test(line)) {
-        addIssue(
-          "warning",
-          lineNumber,
-          "Console output",
-          "printf() is present in the code.",
-          "Use appropriate logging or remove debugging output before production."
-        );
-      }
+    if (opens !== closes) {
+      addIssue(
+        "error",
+        null,
+        "Unbalanced braces",
+        "Opening and closing braces are not balanced.",
+        "Check that every { has a matching }."
+      );
+    }
 
-      if (/\bstrcpy\s*\(/.test(line)) {
-        addIssue(
-          "warning",
-          lineNumber,
-          "Potential buffer overflow",
-          "strcpy() does not perform bounds checking.",
-          "Prefer a bounds-aware string handling approach."
-        );
-      }
-    });
-  }
-
-  // --------------------------------------------------
-  // PHP
-  // --------------------------------------------------
-
-  if (selectedLanguage === "php") {
     lines.forEach((line, index) => {
       const lineNumber = index + 1;
 
@@ -385,66 +356,16 @@ app.get("/api/health", (req, res) => {
           "error",
           lineNumber,
           "Potential security risk",
-          "PHP eval() executes dynamically generated PHP code.",
-          "Avoid eval(), especially with user-controlled input."
-        );
-      }
-
-      if (/\bvar_dump\s*\(/.test(line)) {
-        addIssue(
-          "warning",
-          lineNumber,
-          "Debugging statement",
-          "var_dump() is present in the code.",
-          "Remove debugging output before production deployment."
-        );
-      }
-
-      if (/\bmysql_query\s*\(/.test(line)) {
-        addIssue(
-          "error",
-          lineNumber,
-          "Deprecated database API",
-          "The mysql_query() API is obsolete in modern PHP.",
-          "Use PDO or MySQLi with parameterized queries."
+          "eval() can execute dynamically generated code.",
+          "Avoid eval() whenever possible."
         );
       }
     });
   }
 
-  // --------------------------------------------------
-  // Go
-  // --------------------------------------------------
-
-  if (selectedLanguage === "go") {
-    lines.forEach((line, index) => {
-      const lineNumber = index + 1;
-
-      if (/\bfmt\.Print/.test(line)) {
-        addIssue(
-          "warning",
-          lineNumber,
-          "Console output",
-          "fmt.Print* is present in the code.",
-          "Use structured logging where appropriate for production applications."
-        );
-      }
-
-      if (/\bpanic\s*\(/.test(line)) {
-        addIssue(
-          "warning",
-          lineNumber,
-          "Panic usage",
-          "panic() can terminate the application unexpectedly.",
-          "Handle recoverable errors explicitly where appropriate."
-        );
-      }
-    });
-  }
-
-  // --------------------------------------------------
-  // Calculate statistics
-  // --------------------------------------------------
+  // =========================================
+  // SUMMARY
+  // =========================================
 
   const errors =
     issues.filter(
@@ -462,6 +383,7 @@ app.get("/api/health", (req, res) => {
     errorCount: errors,
     warningCount: warnings,
     issues,
+
     summary:
       issues.length === 0
         ? "No obvious issues detected by the local analyzer."
